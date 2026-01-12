@@ -61,22 +61,6 @@ class AntOrchard : ModelTask() {
         return modelFields
     }
 
-    override fun check(): Boolean {
-        return when {
-            TaskCommon.IS_ENERGY_TIME -> {
-                Log.record(TAG, "⏸ 当前为只收能量时间停止执行${name}任务！")
-                false
-            }
-
-            TaskCommon.IS_MODULE_SLEEP_TIME -> {
-                Log.record(TAG, "💤 模块休眠时间停止执行${name}任务！")
-                false
-            }
-
-            else -> true
-        }
-    }
-
     override suspend fun runSuspend() {
         try {
             Log.record(TAG, "执行开始-$name")
@@ -653,13 +637,12 @@ class AntOrchard : ModelTask() {
             }
 
             val ongoing = roundTask.optBoolean("ongoing", false)      // 该轮是否正在进行（若任务完成但 ongoing=true，说明待领取）
-            val MtaskStatus = roundTask.optString("taskStatus")        // FINISHED / TODO
+            val MtaskStatus = roundTask.optString("taskStatus")
             val MtaskId = roundTask.optString("taskId")
             val MawardCount = roundTask.optInt("awardCount", 0)
 
             // 🔥 条件：大任务已经完成，但仍未领取奖励（ongoing=true）
             if (MtaskStatus == "FINISHED" && ongoing) {
-
                 Log.record(TAG, "第 $currentRound 轮 奖励未领取，尝试领取")
 
                 val awardResp = AntOrchardRpcCall.receiveTaskAward(
