@@ -21,6 +21,7 @@ import fansirsqi.xposed.sesame.ui.extension.openUrl
 import fansirsqi.xposed.sesame.ui.extension.performNavigationToSettings
 import fansirsqi.xposed.sesame.ui.screen.MainScreen
 import fansirsqi.xposed.sesame.ui.theme.AppTheme
+import fansirsqi.xposed.sesame.ui.theme.ThemeManager
 import fansirsqi.xposed.sesame.ui.viewmodel.MainViewModel
 import fansirsqi.xposed.sesame.util.CommandUtil
 import fansirsqi.xposed.sesame.util.Detector
@@ -75,6 +76,7 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences(PREFERENCES_KEY, MODE_PRIVATE)
         IconManager.syncIconState(this, prefs.getBoolean("is_icon_hidden", false))
 
+
         // 5. 设置 Compose 内容
         setContent {
             // 收集 ViewModel 状态
@@ -87,10 +89,10 @@ class MainActivity : ComponentActivity() {
             val uidList by remember {
                 derivedStateOf { userList.map { it.userId } }
             }
-
+            val isDynamicColor by ThemeManager.isDynamicColor.collectAsStateWithLifecycle()
 
             // AppTheme 会处理状态栏颜色
-            AppTheme {
+            AppTheme(dynamicColor = isDynamicColor) {
                 WatermarkLayer(
                     uidList = uidList
                 ) {
@@ -99,6 +101,8 @@ class MainActivity : ComponentActivity() {
                         activeUserName = activeUser?.showName ?: "未载入",
                         moduleStatus = moduleStatus,
                         viewModel = viewModel,
+                        isDynamicColor = isDynamicColor, // 传给 MainScreen
+                        // 传入回调
                         userList = userList, // 传入列表
                         // 🔥 处理跳转逻辑
                         onNavigateToSettings = { selectedUser ->

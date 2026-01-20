@@ -1,20 +1,23 @@
 package fansirsqi.xposed.sesame.ui
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import fansirsqi.xposed.sesame.ui.screen.ExtendScreen
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fansirsqi.xposed.sesame.ui.extension.WatermarkLayer
+import fansirsqi.xposed.sesame.ui.screen.ExtendScreen
 import fansirsqi.xposed.sesame.ui.theme.AppTheme
+import fansirsqi.xposed.sesame.ui.theme.ThemeManager
 
-class ExtendActivity : ComponentActivity() { // 注意：改继承 ComponentActivity 或 AppCompatActivity
+class ExtendActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
         setContent {
-            AppTheme {
+            val isDynamicColor by ThemeManager.isDynamicColor.collectAsStateWithLifecycle()
+            AppTheme(dynamicColor = isDynamicColor) {
                 WatermarkLayer {
                     ExtendScreen(onBackClick = { finish() })
                 }

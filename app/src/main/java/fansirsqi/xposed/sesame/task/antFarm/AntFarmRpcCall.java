@@ -397,10 +397,25 @@ public class AntFarmRpcCall {
     }
 
     public static String useFarmFood(String cookbookId, String cuisineId) {
-        return RequestManager.requestString("com.alipay.antfarm.useFarmFood",
-                "[{\"cookbookId\":\"" + cookbookId + "\",\"cuisineId\":\"" + cuisineId
-                        + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"useCuisine\":true,\"version\":\""
-                        + VERSION + "\"}]");
+//        return RequestManager.requestString("com.alipay.antfarm.useFarmFood",
+//                "[{\"cookbookId\":\"" + cookbookId + "\",\"cuisineId\":\"" + cuisineId
+//                        + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"useCuisine\":true,\"version\":\""
+//                        + VERSION + "\"}]");
+        try {
+            JSONObject args = new JSONObject();
+            args.put("cookbookId", cookbookId);
+            args.put("cuisineId", cuisineId);
+            args.put("requestType", "NORMAL");
+            args.put("sceneCode", "ANTFARM");
+            args.put("canMock", true);
+            args.put("source", "chInfo_ch_appcenter__chsub_9patch");
+            args.put("useCuisine", true);
+            args.put("version", VERSION);
+            String params = "[" + args + "]";
+            return RequestManager.requestString("com.alipay.antfarm.useFarmFood", params);
+        } catch (JSONException e) {
+            return "";
+        }
     }
 
     public static String collectKitchenGarbage() {
@@ -832,13 +847,13 @@ public class AntFarmRpcCall {
         String taskSceneCode = "dailyDraw".equals(drawType) ?
                 "ANTFARM_DAILY_DRAW_TASK" : "ANTFARM_IP_DRAW_TASK";
         String awardType = "dailyDraw".equals(drawType) ?
-                "DAILY_DRAW_TIMES" : "FAMILY_DRAW_TIME";
+                "DAILY_DRAW_TIMES" : "IP_DRAW_MACHINE_DRAW_TIMES";
 
         JSONObject args = new JSONObject();
         args.put("awardType", awardType);
         args.put("requestType", "RPC");
         args.put("sceneCode", "ANTFARM");
-        args.put("source", "icon");
+        args.put("source", "antfarm_villa");
         args.put("taskId", taskId);
         args.put("taskSceneCode", taskSceneCode);
         String params = "[" + args + "]";
@@ -859,8 +874,7 @@ public class AntFarmRpcCall {
                         + "\"requestType\":\"RPC\","
                         + "\"scene\":\"" + scene + "\","
                         + "\"sceneCode\":\"ANTFARM\","
-                        + "\"source\":\"icon\"}]"
-        );
+                        + "\"source\":\"antfarm_villa\"}]");
     }
 
     /**
@@ -869,19 +883,46 @@ public class AntFarmRpcCall {
      * @return 返回结果JSON字符串
      */
     public static String drawMachineIP() {
-        return RequestManager.requestString("com.alipay.antfarm.drawMachine",
-                "[{\"requestType\":\"RPC\",\"scene\":\"ipDrawMachine\",\"sceneCode\":\"ANTFARM\",\"source\":\"ip_ccl\"}]");
+        return drawMachineIP(1);
+    }
+
+    /**
+     * 执行抽奖（IP抽抽乐）- 支持连抽
+     * @param batchDrawTimes 连抽次数
+     * @return 返回结果JSON字符串
+     */
+    public static String drawMachineIP(int batchDrawTimes) {
+        String data = "[{"
+                + "\"batchDrawTimes\":" + batchDrawTimes + ","
+                + "\"requestType\":\"RPC\","
+                + "\"scene\":\"ipDrawMachine\","
+                + "\"sceneCode\":\"ANTFARM\","
+                + "\"source\":\"antfarm_villa\""
+                + "}]";
+
+        return RequestManager.requestString("com.alipay.antfarm.drawMachine", data);
     }
 
     /**
      * 执行抽奖（普通抽抽乐）
-     *
      * @param activityId 活动ID
      * @return 返回结果JSON字符串
      */
     public static String drawMachineDaily(String activityId) {
-        return RequestManager.requestString("com.alipay.antfarm.drawMachine",
-                "[{\"activityId\":\"" + activityId + "\",\"requestType\":\"RPC\",\"scene\":\"dailyDrawMachine\",\"sceneCode\":\"ANTFARM\",\"source\":\"icon\"}]");
+        return drawMachineDaily(1);
+    }
+    public static String drawMachineDaily(int batchDrawTimes) {
+        // 构造请求数据，完全匹配日志中的字段
+        String data = "[{"
+                + "\"batchDrawTimes\":" + batchDrawTimes + ","
+                + "\"requestType\":\"RPC\","
+                + "\"scene\":\"dailyDrawMachine\","
+                + "\"sceneCode\":\"ANTFARM\","
+                + "\"source\":\"antfarm_villa\""  //siliaorenwu  庄园首页抽一次抽抽乐获得饲料任务
+                + "}]";
+
+        // 使用 RequestManager 发送请求
+        return RequestManager.requestString("com.alipay.antfarm.drawMachine", data);
     }
 
     /**
@@ -989,28 +1030,27 @@ public class AntFarmRpcCall {
                 "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]");
     }
 
-
-
     /**
-     * 查询物品列表（蚂蚁庄园装修商城）
-     *
-     * @param labelType  标签类型（如 recentlyAdded）
-     * @param pageSize   每页数量
-     * @param startIndex 起始索引
-     * @return 返回结果JSON字符串
+     * 装修金商城 - 分页查询家具列表
      */
-    public static String getItemList(String labelType, int pageSize, int startIndex) {
-        String data="[{\"activityId\":\"20250808\"," +
-                "\"labelType\":\"" + labelType + "\"," +
-                "\"pageSize\":" + pageSize + "," +
-                "\"requestType\":\"NORMAL\"," +
-                "\"sceneCode\":\"ANTFARM_FITMENT_MALL\"," +
-                "\"source\":\"antfarm\"," +
-                "\"startIndex\":" + startIndex + "}]";
-        return RequestManager.requestString("com.alipay.antiep.itemList",data);
+    public static String getFitmentItemList(String activityId, int pageSize, String labelType, int startIndex) {
+        try {
+            JSONObject args = new JSONObject();
+            args.put("activityId", activityId);
+            if (labelType != null && !labelType.isEmpty()) {
+                args.put("labelType", labelType);
+            }
+            args.put("pageSize", pageSize);
+            args.put("requestType", "NORMAL");
+            args.put("sceneCode", "ANTFARM_FITMENT_MALL");
+            args.put("source", "antfarm");
+            args.put("startIndex", startIndex);
 
+            return RequestManager.requestString("com.alipay.antiep.itemList", "[" + args + "]");
+        } catch (Exception e) {
+            return "";
+        }
     }
-
 
     /**
      * 查询道具详情
@@ -1027,24 +1067,33 @@ public class AntFarmRpcCall {
     }
 
     /**
-     * 兑换装扮或利益点
-     *
-     * @param spuId 标准产品单元ID
-     * @param skuId 库存保持单位ID
-     * @return 返回结果JSON字符串
+     * 兑换庄园家具
      */
-    public static String exchangeBenefit(String spuId, String skuId) {
+    public static String exchangeBenefit(String spuId, String skuId, String activityId) {
         String requestId = generateRequestId();
-        return RequestManager.requestString("com.alipay.antcommonweal.exchange.h5.exchangeBenefit",
-                "[{" +
-                        "\"context\":{\"activityId\":\"20250808\"}," +
-                        "\"requestId\":\"" + requestId + "\"," +
-                        "\"requestType\":\"NORMAL\"," +
-                        "\"sceneCode\":\"ANTFARM_FITMENT_MALL\"," +
-                        "\"skuId\":\"" + skuId + "\"," +
-                        "\"source\":\"H5\"," +
-                        "\"spuId\":\"" + spuId + "\"" +
-                        "}]");
+        try {
+            JSONObject requestDataItem = new JSONObject();
+
+            JSONObject context = new JSONObject();
+            context.put("activityId", activityId);
+
+            requestDataItem.put("context", context);
+            requestDataItem.put("requestId", requestId);
+            requestDataItem.put("requestType", "NORMAL");
+            requestDataItem.put("sceneCode", "ANTFARM_FITMENT_MALL");
+            requestDataItem.put("skuId", skuId);
+            requestDataItem.put("source", "H5");
+            requestDataItem.put("spuId", spuId);
+
+            JSONArray requestData = new JSONArray().put(requestDataItem);
+            return RequestManager.requestString(
+                    "com.alipay.antcommonweal.exchange.h5.exchangeBenefit",
+                    requestData.toString()
+            );
+        } catch (JSONException e) {
+            Log.printStackTrace("exchangeBenefit Error", e);
+            return "";
+        }
     }
 
     /**
@@ -1085,11 +1134,60 @@ public class AntFarmRpcCall {
         return RequestManager.requestString("com.alipay.antfarm.listFarmTask", args);
     }
 
+    /**
+     * 查询物品列表（ip抽抽乐）
+     *
+     * @param activityId 活动ID（如图片中的 ipDrawMachine_260112）
+     * @param pageSize   每页数量 * @param startIndex 起始索引
+     * @return 返回结果JSON字符串
+     */
+    public static String getItemList(String activityId, int pageSize, int startIndex) {
+        String data = "[{" +
+                "\"activityId\":\"" + activityId + "\"," +
+                "\"pageSize\":" + pageSize + "," +
+                "\"requestType\":\"RPC\"," +
+                "\"sceneCode\":\"ANTFARM_IP_DRAW_MALL\"," +
+                "\"source\":\"antfarm.villa\"," +
+                "\"startIndex\":" + startIndex + "}]";
+        return RequestManager.requestString("com.alipay.antiep.itemList", data);
+    }
 
+    /**
+     * ip抽抽乐兑换装扮
+     *
+     * @param spuId      标准产品单元ID
+     * @param skuId      库存保持单位ID
+     * @param activityId 活动ID (例如: ipDrawMachine_260112)
+     * @param sceneCode  场景代码 (例如: ANTFARM_IP_DRAW_MALL)
+     * @param source     来源
+     * @return 返回结果JSON字符串
+     */
+    public static String exchangeBenefit(String spuId, String skuId, String activityId, String sceneCode,
+            String source) {
+        String requestId = generateRequestId();
+        try {
+            JSONObject requestDataItem = new JSONObject();
 
+            JSONObject context = new JSONObject();
+            context.put("activityId", activityId);
 
+            requestDataItem.put("context", context);
+            requestDataItem.put("requestId", requestId);
+            requestDataItem.put("requestType", "RPC");
+            requestDataItem.put("sceneCode", sceneCode);
+            requestDataItem.put("skuId", skuId);
+            requestDataItem.put("source", source);
+            requestDataItem.put("spuId", spuId);
+            JSONArray requestData = new JSONArray().put(requestDataItem);
 
-
-
+            return RequestManager.requestString(
+                    "com.alipay.antcommonweal.exchange.h5.exchangeBenefit",
+                    requestData.toString()
+            );
+        } catch (JSONException e) {
+            Log.printStackTrace("exchangeBenefit Error", e);
+            return "";
+        }
+    }
 
 }

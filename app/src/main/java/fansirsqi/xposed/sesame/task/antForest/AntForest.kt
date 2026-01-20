@@ -24,7 +24,7 @@ import fansirsqi.xposed.sesame.model.modelFieldExt.ListModelField.ListJoinCommaT
 import fansirsqi.xposed.sesame.util.TaskBlacklist
 import fansirsqi.xposed.sesame.task.ModelTask
 import fansirsqi.xposed.sesame.task.TaskCommon
-import fansirsqi.xposed.sesame.task.antFarm.TaskStatus
+import fansirsqi.xposed.sesame.task.TaskStatus
 import fansirsqi.xposed.sesame.task.antForest.ForestUtil.hasBombCard
 import fansirsqi.xposed.sesame.task.antForest.ForestUtil.hasShield
 import fansirsqi.xposed.sesame.task.antForest.Privilege.studentSignInRedEnvelope
@@ -114,7 +114,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
     private var collectWateringBubble: BooleanModelField? = null // 收取浇水金球开关
     private var batchRobEnergy: BooleanModelField? = null // 批量收取能量开关
     private var balanceNetworkDelay: BooleanModelField? = null // 平衡网络延迟开关
-    private var whackMoleMode: ChoiceModelField? = null // 6秒拼手速开关
+    var whackMoleMode: ChoiceModelField? = null // 6秒拼手速开关
     private var collectProp: BooleanModelField? = null // 收集道具开关
     private var queryInterval: StringModelField? = null // 查询间隔时间
     private var collectInterval: StringModelField? = null // 收取间隔时间
@@ -679,6 +679,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
 
     override fun boot(classLoader: ClassLoader?) {
         super.boot(classLoader)
+        instance = this
 
 
         // 安全创建各种区间限制
@@ -860,11 +861,11 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 if (energyRain!!.value) {
                     // 检查是否到达执行时间
                     if (TaskTimeChecker.isTimeReached(energyRainTime?.value, "0810")) {
-                        EnergyRainCoroutine.execEnergyRainCompat()
                         if (energyRainChance!!.value) {
                             useEnergyRainChanceCard()
                             tc.countDebug("使用能量雨卡")
                         }
+                        EnergyRainCoroutine.execEnergyRainCompat()
                         tc.countDebug("能量雨")
                     } else {
                         Log.record(TAG, "能量雨未到执行时间，跳过")
@@ -4319,35 +4320,46 @@ class AntForest : ModelTask(), EnergyCollectCallback {
         }
     }
 
-    private fun useEnergyRainChanceCard() {
+    private suspend fun useEnergyRainChanceCard() {
         try {
             if (Status.hasFlagToday("AntForest::useEnergyRainChanceCard")) {
                 return
             }
-            // 背包查找 限时能量雨机会
-            var jo = findPropBag(queryPropList(), "LIMIT_TIME_ENERGY_RAIN_CHANCE")
-            // 活力值商店兑换
-            if (jo == null) {
-                val skuInfo = Vitality.findSkuInfoBySkuName("能量雨次卡") ?: return
-                val skuId = skuInfo.getString("skuId")
-                if (Status.canVitalityExchangeToday(
-                        skuId,
-                        1
-                    ) && Vitality.VitalityExchange(
-                        skuInfo.getString("spuId"),
-                        skuId,
-                        "限时能量雨机会"
-                    )
-                ) {
-                    jo = findPropBag(queryPropList(), "LIMIT_TIME_ENERGY_RAIN_CHANCE")
+            val propTypes = arrayOf("LIMIT_TIME_ENERGY_RAIN_CHANCE", "ENERGY_RAIN_CHANCE")
+            for (propType in propTypes) {
+                while (true) {
+                    val jo = findPropBag(queryPropList(true), propType) ?: break
+                    if (usePropBag(jo)) {
+                        Log.record(TAG, "成功使用一个能量雨道具: $propType")
+                        delay(2000)
+                    } else {
+                        break
+                    }
+                }
+
+                if (propType == "LIMIT_TIME_ENERGY_RAIN_CHANCE") {
+                    val skuInfo = Vitality.findSkuInfoBySkuName("能量雨次卡")
+                    if (skuInfo != null) {
+                        val skuId = skuInfo.getString("skuId")
+                        if (Status.canVitalityExchangeToday(skuId, 1)) {
+                            if (Vitality.VitalityExchange(
+                                    skuInfo.getString("spuId"),
+                                    skuId,
+                                    "限时能量雨机会"
+                                )
+                            ) {
+                                delay(1000)
+                                val joExchanged = findPropBag(queryPropList(true), propType)
+                                if (joExchanged != null && usePropBag(joExchanged)) {
+                                    delay(1000)
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            // 使用 道具
-            if (jo != null && usePropBag(jo)) {
-                Status.setFlagToday("AntForest::useEnergyRainChanceCard")
-                GlobalThreadPools.sleepCompat(500)
-                EnergyRainCoroutine.execEnergyRainCompat()
-            }
+            Status.setFlagToday("AntForest::useEnergyRainChanceCard")
+            Log.record(TAG, "所有能量雨卡已处理完毕")
         } catch (th: Throwable) {
             Log.printStackTrace(TAG, "useEnergyRainChanceCard err",th)
         }
@@ -4585,6 +4597,9 @@ class AntForest : ModelTask(), EnergyCollectCallback {
 
     companion object {
         val TAG: String = AntForest::class.java.getSimpleName()
+
+        @JvmField
+        var instance: AntForest? = null
 
 
         private val offsetTimeMath = Average(5)
@@ -4845,5 +4860,57 @@ class AntForest : ModelTask(), EnergyCollectCallback {
      */
     private fun isTeam(homeObj: JSONObject): Boolean {
         return homeObj.optString("nextAction", "") == "Team"
+    }
+
+    /**
+     * 手动触发森林打地鼠
+     */
+    suspend fun manualWhackMole(modeIndex: Int, games: Int) {
+        try {
+            val obj = querySelfHome()
+            if (obj != null) {
+                // 确定模式：1 为兼容，2 为激进
+                val mode = if (modeIndex == 2) WhackMole.Mode.AGGRESSIVE else WhackMole.Mode.COMPATIBLE
+
+                // 设置本次执行的总局数
+                WhackMole.setTotalGames(games)
+
+                Log.record(
+                    TAG,
+                    "🎮 手动触发拼手速任务: ${if (mode == WhackMole.Mode.AGGRESSIVE) "激进模式" else "兼容模式"}, 目标局数: $games"
+                )
+
+                // 执行游戏
+                WhackMole.startSuspend(mode)
+            } else {
+                Log.record(TAG, "无法获取自己主页信息")
+            }
+        } catch (t: Throwable) {
+            Log.printStackTrace(TAG, t)
+        }
+    }
+    /**
+     * 手动运行能量雨逻辑
+     * @param exchange 是否先尝试兑换并使用能量雨卡
+     */
+    suspend fun manualUseEnergyRain(exchange: Boolean) {
+        try {
+            Log.record(TAG, "🚀 开始执行手动能量雨任务...")
+            val obj =querySelfHome()
+            if (obj != null) {
+
+                if (exchange) {
+                    Log.record(TAG, "尝试兑换并激活能量雨卡...")
+                    useEnergyRainChanceCard()
+                }
+
+                EnergyRainCoroutine.execEnergyRainCompat()
+                Log.record(TAG, "✅ 手动能量雨任务处理完毕")
+            } else {
+                Log.record(TAG, "无法获取自己主页信息")
+            }
+        } catch (t: Throwable) {
+            Log.printStackTrace(TAG, "manualUseEnergyRain 异常:", t)
+        }
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import fansirsqi.xposed.sesame.SesameApplication.Companion.PREFERENCES_KEY
 import fansirsqi.xposed.sesame.entity.UserEntity
 import fansirsqi.xposed.sesame.service.ConnectionState
 import fansirsqi.xposed.sesame.service.LsposedServiceManager
@@ -34,6 +35,8 @@ import kotlinx.coroutines.withContext
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+
+
     // --- 内部状态定义 ---
     sealed class ModuleStatus {
         data object Loading : ModuleStatus()
@@ -56,6 +59,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val TAG = "MainViewModel"
         var verifuids = FansirsqiUtil.getFolderList(Files.CONFIG_DIR.absolutePath)
     }
+
+    // 1. 定义状态
+    private val prefs = application.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
+
 
     private val _serviceStatus = MutableStateFlow<ServiceStatus>(ServiceStatus.Loading)
     val serviceStatus = _serviceStatus.asStateFlow()
