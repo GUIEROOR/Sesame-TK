@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import fansirsqi.xposed.sesame.SesameApplication.Companion.PREFERENCES_KEY
 import fansirsqi.xposed.sesame.SesameApplication.Companion.hasPermissions
+import fansirsqi.xposed.sesame.ui.extension.NativeComposeBridge
 import fansirsqi.xposed.sesame.ui.extension.WatermarkLayer
 import fansirsqi.xposed.sesame.ui.extension.openUrl
 import fansirsqi.xposed.sesame.ui.extension.performNavigationToSettings
@@ -171,7 +172,7 @@ class MainActivity : ComponentActivity() {
                 if (Files.delFile(Files.CONFIG_DIR)) {
                     ToastUtil.showToast(this, "🙂 清空配置成功")
                     // 可选：重载配置或刷新 UI
-                    viewModel.reloadUserConfigs()
+                    viewModel.refreshUserConfigs()
                 } else {
                     ToastUtil.showToast(this, "😭 清空配置失败")
                 }
@@ -190,7 +191,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (hasPermissions) viewModel.reloadUserConfigs()
+        if (hasPermissions) viewModel.refreshUserConfigs()
     }
 
     override fun onDestroy() {
